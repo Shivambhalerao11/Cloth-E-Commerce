@@ -1,17 +1,17 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useShop } from '../context/ShopContext';
 import { TabType } from '../types';
 
-export const BottomNavBar: React.FC = () => {
+export const BottomNavBar: React.FC = React.memo(() => {
   const { activeTab, setActiveTab, cartCount, wishlist } = useShop();
 
-  const navItems: { id: TabType; icon: string; label: string; badge?: number }[] = [
+  const navItems: { id: TabType; icon: string; label: string; badge?: number }[] = useMemo(() => [
     { id: 'home',   icon: 'home',          label: 'Home'  },
     { id: 'shop',   icon: 'grid_view',     label: 'Shop'  },
     { id: 'saved',  icon: 'favorite',      label: 'Saved', badge: wishlist.length > 0 ? wishlist.length : undefined },
     { id: 'cart',   icon: 'shopping_cart', label: 'Bag',   badge: cartCount > 0 ? cartCount : undefined },
     { id: 'login',  icon: 'person',        label: 'Sign In' },
-  ];
+  ], [wishlist.length, cartCount]);
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 py-2.5 bg-[#1e1b18] border-t border-[#4c4640] shadow-[0_-4px_20px_rgba(0,0,0,0.25)]">
@@ -50,4 +50,4 @@ export const BottomNavBar: React.FC = () => {
       })}
     </nav>
   );
-};
+});

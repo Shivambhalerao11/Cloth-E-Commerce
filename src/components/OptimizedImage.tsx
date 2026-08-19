@@ -47,7 +47,7 @@ const qualityLog: Set<string> = new Set();
  * Strips any existing =w/=h/=s suffix and appends the appropriate one.
  * Non-Google URLs are returned unchanged.
  */
-export function upgradeImageUrl(url: string, size: ImageSize): string {
+export function upgradeImageUrl(url: string, size: ImageSize | string = 'card'): string {
   if (!url) return url;
 
   // Only process Google's lh3 CDN URLs
@@ -58,7 +58,8 @@ export function upgradeImageUrl(url: string, size: ImageSize): string {
   // Strip any existing size suffix (=w123, =h123, =s123, =w123-h456, etc.)
   const stripped = url.replace(/=[whsWSH]\d+(-[whWHsS]\d+)?(-[a-zA-Z]+)*$/, '');
 
-  return stripped + SIZE_MAP[size];
+  const suffix = SIZE_MAP[size as ImageSize] || '=w1000';
+  return stripped + suffix;
 }
 
 interface OptimizedImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {

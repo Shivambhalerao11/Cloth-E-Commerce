@@ -1,9 +1,119 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useShop } from '../context/ShopContext';
 import { Product } from '../types';
 import { MarqueeTicker } from '../components/MarqueeTicker';
 import { upgradeImageUrl } from '../components/OptimizedImage';
+
+const CATEGORIES = ['All', 'Shirts', 'Jackets', 'Denim', 'Knitwear', 'T-Shirts', 'Accessories'];
+const SIZES = ['All', 'S', 'M', 'L', 'XL', 'XXL'];
+
+interface ProductArticleProps {
+  product: Product;
+  isLargeHero: boolean;
+  wishlisted: boolean;
+  onOpenDetail: (p: Product) => void;
+  onToggleWishlist: (id: string) => void;
+  onAddToCart: (p: Product, size: 'S'|'M'|'L'|'XL'|'XXL', color: string) => void;
+  onSetCursorText: (t: string) => void;
+}
+
+const ProductArticle: React.FC<ProductArticleProps> = React.memo(({
+  product,
+  isLargeHero,
+  wishlisted,
+  onOpenDetail,
+  onToggleWishlist,
+  onAddToCart,
+  onSetCursorText
+}) => {
+  return (
+    <article
+      onClick={() => onOpenDetail(product)}
+      onMouseEnter={() => onSetCursorText('INSPECT')}
+      onMouseLeave={() => onSetCursorText('')}
+      className={`group relative flex flex-col border border-[#cfc5bd] hover:border-[#1d1c14] bg-[#fff9ed] transition-all cursor-pointer ${
+        isLargeHero ? 'col-span-2 md:col-span-8' : 'col-span-1 md:col-span-4'
+      }`}
+    >
+      {/* Badge */}
+      {product.badge && (
+        <div
+          className={`absolute top-3 left-3 z-10 font-body-custom text-[10px] md:text-xs font-bold uppercase tracking-widest px-2.5 py-1 border border-[#1d1c14] shadow-xs ${
+            product.badge === 'NEW'
+              ? 'bg-[#f6be2c] text-[#1d1c14]'
+              : product.badge === 'LIMITED'
+              ? 'bg-[#100d0a] text-white'
+              : 'bg-[#cdc5c0] text-[#1d1c14]'
+          }`}
+        >
+          {product.badge === 'NEW' ? 'NEW ARRIVAL' : product.badge}
+        </div>
+      )}
+
+      {/* Wishlist button */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleWishlist(product.id);
+        }}
+        className={`absolute top-3 right-3 z-10 p-1.5 bg-[#fff9ed]/90 border border-[#1d1c14] transition-colors ${
+          wishlisted ? 'text-[#a53c1b]' : 'text-[#1d1c14] hover:text-[#a53c1b]'
+        }`}
+        title={wishlisted ? 'Remove from Saved' : 'Save to Wishlist'}
+      >
+        <span className={`material-symbols-outlined text-lg ${wishlisted ? 'fill-1' : ''}`}>
+          favorite
+        </span>
+      </button>
+
+      {/* Product Image */}
+      <div
+        className={`w-full overflow-hidden bg-white relative ${
+          isLargeHero
+            ? 'aspect-[4/5] md:aspect-[16/10]'
+            : 'aspect-[3/4]'
+        }`}
+      >
+        <img
+          src={upgradeImageUrl(product.image, 'card')}
+          alt={product.name}
+          loading="lazy"
+          decoding="async"
+          className="w-full h-full object-cover object-top transition-transform duration-500"
+          style={{ willChange: 'transform' }}
+        />
+      </div>
+
+      {/* Product Details Bar */}
+      <div className="p-3 sm:p-4 bg-[#fff9ed] flex flex-col justify-between flex-grow border-t border-[#cfc5bd]">
+        <div>
+          <h2 className="font-headline text-lg sm:text-2xl font-semibold text-[#1d1c14] leading-tight group-hover:text-[#a53c1b] transition-colors">
+            {product.name}
+          </h2>
+          <p className="font-body-custom text-xs text-[#4c4640] mt-1 line-clamp-1">
+            {product.subtitle}
+          </p>
+        </div>
+
+        <div className="flex justify-between items-center mt-3 pt-2 border-t border-[#e8e2d6]">
+          <span className="font-mono-custom text-sm sm:text-base font-bold text-[#a53c1b]">
+            ₹{product.price.toLocaleString()}
+          </span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddToCart(product, product.availableSizes[0] || 'M', product.colors[0]?.name || 'Standard');
+            }}
+            className="bg-[#1d1c14] text-white font-body-custom text-[11px] px-3 py-1.5 uppercase font-bold tracking-wider hover:bg-[#a53c1b] transition-colors"
+          >
+            Add
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+});
 
 export const ShopView: React.FC = () => {
   const { products, openProductDetail, addToCart, toggleWishlist, isWishlisted, setCursorText } = useShop();
@@ -17,34 +127,43 @@ export const ShopView: React.FC = () => {
   const [visibleCount, setVisibleCount] = useState<number>(6);
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
 
-  const categories = ['All', 'Shirts', 'Jackets', 'Denim', 'Knitwear', 'T-Shirts', 'Accessories'];
-  const sizes = ['All', 'S', 'M', 'L', 'XL', 'XXL'];
+  // Filtering & Sorting with memoization
+  const filteredProducts = useMemo(() => {
+    return products
+      .filter((p) => {
+        const matchCat = selectedCategory === 'All' || p.category === selectedCategory;
+        const matchSize = selectedSize === 'All' || p.availableSizes.includes(selectedSize as any);
+        const matchPrice = p.price <= maxPrice;
+        const matchStock = !onlyInStock || p.stock > 0;
+        return matchCat && matchSize && matchPrice && matchStock;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'price-low') return a.price - b.price;
+        if (sortBy === 'price-high') return b.price - a.price;
+        return 0; // default featured order
+      });
+  }, [products, selectedCategory, selectedSize, maxPrice, onlyInStock, sortBy]);
 
-  // Filtering
-  const filteredProducts = products
-    .filter((p) => {
-      const matchCat = selectedCategory === 'All' || p.category === selectedCategory;
-      const matchSize = selectedSize === 'All' || p.availableSizes.includes(selectedSize as any);
-      const matchPrice = p.price <= maxPrice;
-      const matchStock = !onlyInStock || p.stock > 0;
-      return matchCat && matchSize && matchPrice && matchStock;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'price-low') return a.price - b.price;
-      if (sortBy === 'price-high') return b.price - a.price;
-      return 0; // default featured order
-    });
+  const displayedProducts = useMemo(() => {
+    return filteredProducts.slice(0, visibleCount);
+  }, [filteredProducts, visibleCount]);
 
-  const displayedProducts = filteredProducts.slice(0, visibleCount);
   const hasMore = visibleCount < filteredProducts.length;
 
-  const handleLoadMore = () => {
+  const handleLoadMore = useCallback(() => {
     setIsLoadingMore(true);
     setTimeout(() => {
       setVisibleCount((prev) => prev + 4);
       setIsLoadingMore(false);
     }, 600);
-  };
+  }, []);
+
+  const handleResetFilters = useCallback(() => {
+    setSelectedCategory('All');
+    setSelectedSize('All');
+    setMaxPrice(5000);
+    setOnlyInStock(false);
+  }, []);
 
   return (
     <div className="w-full pb-20 md:pb-24">
@@ -80,7 +199,7 @@ export const ShopView: React.FC = () => {
                 onChange={(e) => setSelectedCategory(e.target.value)}
                 className="appearance-none bg-[#fff9ed] border border-[#1d1c14] rounded-none px-4 py-2 pr-8 font-mono-custom text-xs uppercase text-[#1d1c14] focus:ring-1 focus:ring-[#1d1c14] focus:outline-none cursor-pointer"
               >
-                {categories.map((cat) => (
+                {CATEGORIES.map((cat) => (
                   <option key={cat} value={cat}>
                     {cat === 'All' ? 'All Categories' : cat}
                   </option>
@@ -98,7 +217,7 @@ export const ShopView: React.FC = () => {
                 onChange={(e) => setSelectedSize(e.target.value)}
                 className="appearance-none bg-[#fff9ed] border border-[#cfc5bd] rounded-none px-4 py-2 pr-8 font-mono-custom text-xs uppercase text-[#1d1c14] focus:ring-1 focus:ring-[#1d1c14] focus:outline-none cursor-pointer hover:border-[#1d1c14]"
               >
-                {sizes.map((s) => (
+                {SIZES.map((s) => (
                   <option key={s} value={s}>
                     {s === 'All' ? 'All Sizes' : `Size ${s}`}
                   </option>
@@ -136,7 +255,7 @@ export const ShopView: React.FC = () => {
           </button>
         </div>
 
-        {/* Product Grid (Asymmetric layout per screenshot) */}
+        {/* Product Grid */}
         {displayedProducts.length === 0 ? (
           <div className="py-20 text-center border border-[#cfc5bd] bg-[#f9f3e7] p-8">
             <span className="material-symbols-outlined text-4xl text-[#7e766f] mb-3">
@@ -149,12 +268,7 @@ export const ShopView: React.FC = () => {
               Try adjusting your category or size filters.
             </p>
             <button
-              onClick={() => {
-                setSelectedCategory('All');
-                setSelectedSize('All');
-                setMaxPrice(5000);
-                setOnlyInStock(false);
-              }}
+              onClick={handleResetFilters}
               className="bg-[#1d1c14] text-white px-6 py-3 font-body-custom text-xs uppercase tracking-widest font-bold hover:bg-[#a53c1b]"
             >
               Reset Filters
@@ -163,93 +277,20 @@ export const ShopView: React.FC = () => {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-12 gap-4 md:gap-6">
             {displayedProducts.map((product, index) => {
-              // First item or items with isHero get large banner style (8 cols on desktop)
-              const isLargeHero = index === 0 && product.isHero;
+              const isLargeHero = index === 0 && Boolean(product.isHero);
               const wishlisted = isWishlisted(product.id);
 
               return (
-                <article
+                <ProductArticle
                   key={product.id}
-                  onClick={() => openProductDetail(product)}
-                  onMouseEnter={() => setCursorText('INSPECT')}
-                  onMouseLeave={() => setCursorText('')}
-                  className={`group relative flex flex-col border border-[#cfc5bd] hover:border-[#1d1c14] bg-[#fff9ed] transition-all cursor-pointer ${
-                    isLargeHero ? 'col-span-2 md:col-span-8' : 'col-span-1 md:col-span-4'
-                  }`}
-                >
-                  {/* Badge */}
-                  {product.badge && (
-                    <div
-                      className={`absolute top-3 left-3 z-10 font-body-custom text-[10px] md:text-xs font-bold uppercase tracking-widest px-2.5 py-1 border border-[#1d1c14] shadow-xs ${
-                        product.badge === 'NEW'
-                          ? 'bg-[#f6be2c] text-[#1d1c14]'
-                          : product.badge === 'LIMITED'
-                          ? 'bg-[#100d0a] text-white'
-                          : 'bg-[#cdc5c0] text-[#1d1c14]'
-                      }`}
-                    >
-                      {product.badge === 'NEW' ? 'NEW ARRIVAL' : product.badge}
-                    </div>
-                  )}
-
-                  {/* Wishlist button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleWishlist(product.id);
-                    }}
-                    className={`absolute top-3 right-3 z-10 p-1.5 bg-[#fff9ed]/90 border border-[#1d1c14] transition-colors ${
-                      wishlisted ? 'text-[#a53c1b]' : 'text-[#1d1c14] hover:text-[#a53c1b]'
-                    }`}
-                    title={wishlisted ? 'Remove from Saved' : 'Save to Wishlist'}
-                  >
-                    <span className={`material-symbols-outlined text-lg ${wishlisted ? 'fill-1' : ''}`}>
-                      favorite
-                    </span>
-                  </button>
-
-                  {/* Product Image */}
-                  <div
-                    className={`w-full overflow-hidden bg-white relative ${
-                      isLargeHero
-                        ? 'aspect-[4/5] md:aspect-[16/10]'
-                        : 'aspect-[3/4]'
-                    }`}
-                  >
-                    <img
-                      src={upgradeImageUrl(product.image, 'card')}
-                      alt={product.name}
-                      className="w-full h-full object-cover object-top transition-transform duration-500" style={{imageRendering:"auto",willChange:"transform"}}
-                    />
-                  </div>
-
-                  {/* Product Details Bar */}
-                  <div className="p-3 sm:p-4 bg-[#fff9ed] flex flex-col justify-between flex-grow border-t border-[#cfc5bd]">
-                    <div>
-                      <h2 className="font-headline text-lg sm:text-2xl font-semibold text-[#1d1c14] leading-tight group-hover:text-[#a53c1b] transition-colors">
-                        {product.name}
-                      </h2>
-                      <p className="font-body-custom text-xs text-[#4c4640] mt-1 line-clamp-1">
-                        {product.subtitle}
-                      </p>
-                    </div>
-
-                    <div className="flex justify-between items-center mt-3 pt-2 border-t border-[#e8e2d6]">
-                      <span className="font-mono-custom text-sm sm:text-base font-bold text-[#a53c1b]">
-                        ₹{product.price.toLocaleString()}
-                      </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          addToCart(product, product.availableSizes[0] || 'M', product.colors[0]?.name || 'Standard');
-                        }}
-                        className="bg-[#1d1c14] text-white font-body-custom text-[11px] px-3 py-1.5 uppercase font-bold tracking-wider hover:bg-[#a53c1b] transition-colors"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  </div>
-                </article>
+                  product={product}
+                  isLargeHero={isLargeHero}
+                  wishlisted={wishlisted}
+                  onOpenDetail={openProductDetail}
+                  onToggleWishlist={toggleWishlist}
+                  onAddToCart={addToCart}
+                  onSetCursorText={setCursorText}
+                />
               );
             })}
           </div>
@@ -288,6 +329,7 @@ export const ShopView: React.FC = () => {
               exit={{ opacity: 0 }}
               onClick={() => setIsFilterDrawerOpen(false)}
               className="fixed inset-0 bg-[#1d1c14]/70 backdrop-blur-sm"
+              style={{ willChange: 'opacity' }}
             />
 
             <motion.div
@@ -295,6 +337,7 @@ export const ShopView: React.FC = () => {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 26, stiffness: 280 }}
+              style={{ willChange: 'transform' }}
               className="relative w-full max-w-md bg-[#fff9ed] h-full shadow-2xl z-10 flex flex-col justify-between border-l-2 border-[#1d1c14] p-6 sm:p-8 overflow-y-auto"
             >
               <div>
@@ -316,7 +359,7 @@ export const ShopView: React.FC = () => {
                     // CATEGORY
                   </span>
                   <div className="flex flex-wrap gap-2">
-                    {categories.map((cat) => (
+                    {CATEGORIES.map((cat) => (
                       <button
                         key={cat}
                         onClick={() => setSelectedCategory(cat)}
@@ -338,7 +381,7 @@ export const ShopView: React.FC = () => {
                     // SIZING
                   </span>
                   <div className="flex flex-wrap gap-2">
-                    {sizes.map((s) => (
+                    {SIZES.map((s) => (
                       <button
                         key={s}
                         onClick={() => setSelectedSize(s)}
@@ -396,12 +439,7 @@ export const ShopView: React.FC = () => {
               {/* Actions */}
               <div className="pt-6 border-t border-[#cfc5bd] flex gap-3">
                 <button
-                  onClick={() => {
-                    setSelectedCategory('All');
-                    setSelectedSize('All');
-                    setMaxPrice(5000);
-                    setOnlyInStock(false);
-                  }}
+                  onClick={handleResetFilters}
                   className="flex-1 py-3 border border-[#1d1c14] font-body-custom text-xs uppercase font-bold tracking-wider hover:bg-white"
                 >
                   Reset

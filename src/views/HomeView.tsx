@@ -1,14 +1,13 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'motion/react';
 import { useShop } from '../context/ShopContext';
 import { MarqueeTicker } from '../components/MarqueeTicker';
-import { OptimizedImage, upgradeImageUrl } from '../components/OptimizedImage';
-import { Product } from '../types';
+import { upgradeImageUrl } from '../components/OptimizedImage';
 
-export const HomeView: React.FC = () => {
+export const HomeView: React.FC = React.memo(() => {
   const { products, openProductDetail, setActiveTab, setCursorText, addToCart } = useShop();
 
-  const newArrivals = products.slice(0, 4);
+  const newArrivals = useMemo(() => products.slice(0, 4), [products]);
 
   return (
     <div className="flex flex-col w-full pb-20 md:pb-24">
@@ -18,6 +17,7 @@ export const HomeView: React.FC = () => {
           initial={{ scale: 1.08 }}
           animate={{ scale: 1 }}
           transition={{ duration: 1.6, ease: 'easeOut' }}
+          style={{ willChange: 'transform' }}
           className="absolute inset-0 w-full h-full object-cover"
           src={upgradeImageUrl('https://lh3.googleusercontent.com/aida-public/AB6AXuCmjdEued8eHgVbD2ORhDaf2-6vtVslOqR5Rj7PVTemNrYOwoMqrQQjvGQ9MHoKV8R4LzzOnNvUUzDxUDhhEPX2-tCvV22Mj2V07O_9Q4t3gPKO9ddq9oC05164bHKy_pxjH11Xdtt24TCS1xLQMg7Ys76PWbZ0bUJIcQY5rGTHFG0vHCM4J5hfUknABYiAGOOhkCjbJbwTTfE5gvcpub56f0FaGKFw9Gi2ExbPXsy-1yoSFlJt0Ayn', 'full')}
           alt="Amar Men's Wear Streetwear Editorial"
@@ -110,6 +110,7 @@ export const HomeView: React.FC = () => {
                   className="w-full h-full object-cover object-top"
                   loading="lazy"
                   decoding="async"
+                  style={{ willChange: 'transform' }}
                 />
 
                 {/* Badges */}
@@ -179,6 +180,9 @@ export const HomeView: React.FC = () => {
               src={upgradeImageUrl('https://lh3.googleusercontent.com/aida-public/AB6AXuB11NkA-xGvDTGWtum_fzhdZIrDAM5H_C3QGtcH_S6CeAvWUTuLfVD9-GYjmx_ORrm5ZN4RIRZD_5wknKtfsaeTi1IzTYHqEuQ9MfL9-HmjWy4z90uZ0stZaWOMPjjXy2vSIicgHk2lzoEgZ6GnA1-bEQpOz1Gmk9UaVB5tf_9-lbEes8zq9nqj-rEIPsmaIcFG8Bbln0TVGZ-yYOQ_mLAlcwmTGRua3xcoQ1-CU-6v1fNRj8-Cc1O3', 'hero')}
               alt="Crisp Oversized Shirt Editorial"
               className="absolute inset-0 w-full h-full object-cover transition-transform duration-500"
+              style={{ willChange: 'transform' }}
+              loading="lazy"
+              decoding="async"
             />
             <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
             <div className="absolute bottom-6 left-6 md:bottom-8 md:left-8 bg-[#fff9ed] p-5 sm:p-6 border-2 border-[#1d1c14] shadow-[4px_4px_0px_0px_rgba(29,28,20,1)]">
@@ -204,6 +208,9 @@ export const HomeView: React.FC = () => {
                 src={upgradeImageUrl('https://lh3.googleusercontent.com/aida-public/AB6AXuBFGwQEokAImJvH8cmDvF7KUIQyCnjDMwPHzpJVZgtTVbtXd3gTbJZWj1acX0KKIdYFgmdNj6Bb5zAWZrXS96jiS_kRjXDX1EE2NOxW-cOuNRbXoVEBuaDBtduNJA8Dsex3W7s4orFnpXy9l4uNzkgviFNKliXV2z60Tj8Df7cgiUvTEvMZEYTNyO6hO7mD4LR1ApW-vUv8_rIc-7gND4zVHyiZb9M9fILoNwGB1txQtg5OWq_kl6aA', 'hero')}
                 alt="Stacked Raw Denim"
                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-500"
+                style={{ willChange: 'transform' }}
+                loading="lazy"
+                decoding="async"
               />
               <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
               <div className="absolute top-5 left-5 bg-[#fff9ed] px-4 py-2 border border-[#1d1c14] shadow-[2px_2px_0px_0px_rgba(29,28,20,1)]">
@@ -243,6 +250,8 @@ export const HomeView: React.FC = () => {
           src={upgradeImageUrl('https://lh3.googleusercontent.com/aida-public/AB6AXuDdnvuQGwibA2mSsHHje9PtYUqYnyjfkIg3gbGG1mkz5rM1LcaTwhIRX4YZ06IPT28oxrgNvGPFYqvecLIg1Od1UXrymq9y-XpP1xBvGRg9a-1lRuzwxE3-wa_9FxopLKNs0xL-7p5H3DfC_i29d4flIKZ8srj9m3Cr2EMGEncK0l75T-qCCjCiBoARot7Q9xmV9nqbtd2bfK2omqGf47Glho3zZiYfWDaqSwIwWvOo0Iv_sDMZNfCN', 'full')}
           alt="Varangaon winter street morning lookbook"
           className="absolute inset-0 w-full h-full object-cover"
+          loading="lazy"
+          decoding="async"
         />
         <div className="absolute inset-0 bg-[#1d1c14]/45" />
 
@@ -270,4 +279,4 @@ export const HomeView: React.FC = () => {
       </section>
     </div>
   );
-};
+});

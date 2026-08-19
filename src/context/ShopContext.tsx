@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { Product, CartItem, Order, InventoryItem, TabType, ToastMessage } from '../types';
 import { INITIAL_PRODUCTS, INITIAL_ORDERS, INITIAL_INVENTORY } from '../data/products';
 
@@ -23,6 +23,39 @@ const TAB_PATH_MAP: Record<TabType, string> = {
   admin:            '/admin',
   about:            '/about',
   saved:            '/saved',
+};
+
+// ---------------------------------------------------------------------------
+// High-performance Pub/Sub system for CustomCursor state.
+// Bypasses React state updates on ShopProvider so hovering elements
+// never causes component tree re-renders.
+// ---------------------------------------------------------------------------
+export type CursorVariant = 'default' | 'hover' | 'button' | 'image' | 'drag';
+export type CursorState = { text: string; variant: CursorVariant };
+type CursorListener = (state: CursorState) => void;
+
+const cursorListeners = new Set<CursorListener>();
+let currentCursorState: CursorState = { text: '', variant: 'default' };
+
+export const subscribeCursor = (listener: CursorListener) => {
+  cursorListeners.add(listener);
+  return () => { cursorListeners.delete(listener); };
+};
+
+export const getCursorState = () => currentCursorState;
+
+export const updateCursorText = (text: string) => {
+  if (currentCursorState.text !== text) {
+    currentCursorState = { ...currentCursorState, text };
+    cursorListeners.forEach(fn => fn(currentCursorState));
+  }
+};
+
+export const updateCursorVariant = (variant: CursorVariant) => {
+  if (currentCursorState.variant !== variant) {
+    currentCursorState = { ...currentCursorState, variant };
+    cursorListeners.forEach(fn => fn(currentCursorState));
+  }
 };
 
 interface ShopContextType {
@@ -57,8 +90,8 @@ interface ShopContextType {
   removeToast: (id: string) => void;
   cursorText: string;
   setCursorText: (text: string) => void;
-  cursorVariant: 'default' | 'hover' | 'button' | 'image' | 'drag';
-  setCursorVariant: (variant: 'default' | 'hover' | 'button' | 'image' | 'drag') => void;
+  cursorVariant: CursorVariant;
+  setCursorVariant: (variant: CursorVariant) => void;
 }
 
 const ShopContext = createContext<ShopContextType | undefined>(undefined);
@@ -110,8 +143,15 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isSearchOpen,    setIsSearchOpen]    = useState(false);
   const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
   const [toasts,          setToasts]          = useState<ToastMessage[]>([]);
-  const [cursorText,      setCursorText]       = useState('');
-  const [cursorVariant,   setCursorVariant]    = useState<'default'|'hover'|'button'|'image'|'drag'>('default');
+
+  // Stable Cursor callbacks
+  const setCursorText = useCallback((text: string) => {
+    updateCursorText(text);
+  }, []);
+
+  const setCursorVariant = useCallback((variant: CursorVariant) => {
+    updateCursorVariant(variant);
+  }, []);
 
   // Persistence
   useEffect(() => { localStorage.setItem('amw_cart',      JSON.stringify(cart));      }, [cart]);
@@ -121,42 +161,41 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => { localStorage.setItem('amw_products',  JSON.stringify(products));  }, [products]);
 
   // ── Toast ──────────────────────────────────────────────────────────────────
-  const removeToast = (id: string) =>
+  const removeToast = useCallback((id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
 
-  const showToast = (title: string, message: string, type: 'success'|'info'|'error' = 'success') => {
+  const showToast = useCallback((title: string, message: string, type: 'success'|'info'|'error' = 'success') => {
     const id = Math.random().toString(36).substring(2, 9);
     setToasts(prev => [...prev, { id, title, message, type }]);
     setTimeout(() => removeToast(id), 3800);
-  };
+  }, [removeToast]);
 
   // ── Navigation ─────────────────────────────────────────────────────────────
-  // setActiveTabOnly: only updates React state (used by NavigationBridge on URL change)
-  const setActiveTabOnly = (tab: TabType) => {
+  const setActiveTabOnly = useCallback((tab: TabType) => {
     setActiveTabState(tab);
-  };
+  }, []);
 
-  // setActiveTab: updates state AND navigates the browser URL
-  const setActiveTab = (tab: TabType) => {
+  const setActiveTab = useCallback((tab: TabType) => {
     setActiveTabState(tab);
     window.scrollTo({ top: 0, behavior: 'smooth' });
     const path = TAB_PATH_MAP[tab];
     if (path && navigateRef.current) {
       navigateRef.current(path);
     }
-  };
+  }, []);
 
-  const openProductDetail = (product: Product) => {
+  const openProductDetail = useCallback((product: Product) => {
     setSelectedProduct(product);
     setActiveTabState('product-detail');
     window.scrollTo({ top: 0, behavior: 'smooth' });
     if (navigateRef.current) {
       navigateRef.current(`/product/${product.id}`);
     }
-  };
+  }, []);
 
   // ── Cart ───────────────────────────────────────────────────────────────────
-  const addToCart = (product: Product, size: 'S'|'M'|'L'|'XL'|'XXL', color: string, quantity = 1) => {
+  const addToCart = useCallback((product: Product, size: 'S'|'M'|'L'|'XL'|'XXL', color: string, quantity = 1) => {
     const cartItemId = `${product.id}-${size}-${color}`;
     setCart(prev => {
       const existing = prev.find(item => item.id === cartItemId);
@@ -168,9 +207,9 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return [...prev, { id: cartItemId, product, size, color, quantity }];
     });
     showToast('Added to Bag', `${product.name} (${size}, ${color}) added.`);
-  };
+  }, [showToast]);
 
-  const updateCartQuantity = (itemId: string, delta: number) => {
+  const updateCartQuantity = useCallback((itemId: string, delta: number) => {
     setCart(prev =>
       prev.map(item => {
         if (item.id !== itemId) return item;
@@ -178,20 +217,20 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return newQty > 0 ? { ...item, quantity: newQty } : null;
       }).filter(Boolean) as CartItem[]
     );
-  };
+  }, []);
 
-  const removeFromCart = (itemId: string) => {
+  const removeFromCart = useCallback((itemId: string) => {
     setCart(prev => prev.filter(item => item.id !== itemId));
     showToast('Removed', 'Item removed from bag.', 'info');
-  };
+  }, [showToast]);
 
-  const clearCart = () => setCart([]);
+  const clearCart = useCallback(() => setCart([]), []);
 
-  const cartTotal = cart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
-  const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+  const cartTotal = useMemo(() => cart.reduce((acc, item) => acc + item.product.price * item.quantity, 0), [cart]);
+  const cartCount = useMemo(() => cart.reduce((acc, item) => acc + item.quantity, 0), [cart]);
 
   // ── Wishlist ───────────────────────────────────────────────────────────────
-  const toggleWishlist = (productId: string) => {
+  const toggleWishlist = useCallback((productId: string) => {
     setWishlist(prev => {
       const exists = prev.includes(productId);
       showToast(
@@ -200,12 +239,12 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       );
       return exists ? prev.filter(id => id !== productId) : [...prev, productId];
     });
-  };
+  }, [showToast]);
 
-  const isWishlisted = (productId: string) => wishlist.includes(productId);
+  const isWishlisted = useCallback((productId: string) => wishlist.includes(productId), [wishlist]);
 
   // ── Orders ─────────────────────────────────────────────────────────────────
-  const createOrder = (orderData: Omit<Order, 'id'|'date'|'time'|'status'|'timeline'>): Order => {
+  const createOrder = useCallback((orderData: Omit<Order, 'id'|'date'|'time'|'status'|'timeline'>): Order => {
     const newId = `#AMW-${Math.floor(1000 + Math.random() * 9000)}`;
     const now = new Date();
     const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -228,17 +267,17 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clearCart();
     showToast('Order Confirmed', `Order ${newId} placed successfully!`);
     return newOrder;
-  };
+  }, [clearCart, showToast]);
 
   // ── Inventory ──────────────────────────────────────────────────────────────
-  const restockItem = (id: string, amount = 15) => {
+  const restockItem = useCallback((id: string, amount = 15) => {
     setInventory(prev =>
       prev.map(item => item.id === id ? { ...item, stock: item.stock + amount } : item)
     );
     showToast('Stock Updated', `Restocked item by +${amount} units.`);
-  };
+  }, [showToast]);
 
-  const addProduct = (newProd: Partial<Product>) => {
+  const addProduct = useCallback((newProd: Partial<Product>) => {
     const id = (newProd.name || 'custom-item').toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const created: Product = {
       id,
@@ -265,23 +304,38 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, ...prev]);
 
     showToast('Product Added', `${created.name} added to live catalog.`);
-  };
+  }, [showToast]);
+
+  const contextValue = useMemo<ShopContextType>(() => ({
+    activeTab, setActiveTab, setActiveTabOnly,
+    products, selectedProduct, setSelectedProduct, openProductDetail,
+    cart, addToCart, updateCartQuantity, removeFromCart, clearCart,
+    cartTotal, cartCount,
+    wishlist, toggleWishlist, isWishlisted,
+    orders, createOrder,
+    inventory, restockItem, addProduct,
+    isSearchOpen, setIsSearchOpen,
+    isSizeGuideOpen, setIsSizeGuideOpen,
+    toasts, showToast, removeToast,
+    cursorText: currentCursorState.text,
+    setCursorText,
+    cursorVariant: currentCursorState.variant,
+    setCursorVariant,
+  }), [
+    activeTab, setActiveTab, setActiveTabOnly,
+    products, selectedProduct, openProductDetail,
+    cart, addToCart, updateCartQuantity, removeFromCart, clearCart,
+    cartTotal, cartCount,
+    wishlist, toggleWishlist, isWishlisted,
+    orders, createOrder,
+    inventory, restockItem, addProduct,
+    isSearchOpen, isSizeGuideOpen,
+    toasts, showToast, removeToast,
+    setCursorText, setCursorVariant
+  ]);
 
   return (
-    <ShopContext.Provider value={{
-      activeTab, setActiveTab, setActiveTabOnly,
-      products, selectedProduct, setSelectedProduct, openProductDetail,
-      cart, addToCart, updateCartQuantity, removeFromCart, clearCart,
-      cartTotal, cartCount,
-      wishlist, toggleWishlist, isWishlisted,
-      orders, createOrder,
-      inventory, restockItem, addProduct,
-      isSearchOpen, setIsSearchOpen,
-      isSizeGuideOpen, setIsSizeGuideOpen,
-      toasts, showToast, removeToast,
-      cursorText, setCursorText,
-      cursorVariant, setCursorVariant,
-    }}>
+    <ShopContext.Provider value={contextValue}>
       {children}
     </ShopContext.Provider>
   );

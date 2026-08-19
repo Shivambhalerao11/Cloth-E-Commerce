@@ -155,7 +155,7 @@ const LoginNav: React.FC = () => {
 const AllRoutes: React.FC = () => {
   const location = useLocation();
   return (
-    <Routes location={location} key={location.pathname}>
+    <Routes location={location}>
       {/* Pre-auth — no TopAppBar/Footer */}
       <Route path="/"      element={<LandingShell><LandingView /></LandingShell>} />
       <Route path="/login" element={<LandingShell><LoginNav /><LoginView /></LandingShell>} />

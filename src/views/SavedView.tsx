@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useShop } from '../context/ShopContext';
 import { upgradeImageUrl } from '../components/OptimizedImage';
 
-export const SavedView: React.FC = () => {
+export const SavedView: React.FC = React.memo(() => {
   const { wishlist, products, openProductDetail, toggleWishlist, addToCart, setActiveTab, setCursorText } = useShop();
 
-  const savedProducts = products.filter((p) => wishlist.includes(p.id));
+  const savedProducts = useMemo(() => {
+    return products.filter((p) => wishlist.includes(p.id));
+  }, [products, wishlist]);
 
   return (
     <main className="w-full max-w-[1440px] mx-auto px-4 sm:px-8 md:px-16 py-8 md:py-14 pb-24">
@@ -52,7 +54,10 @@ export const SavedView: React.FC = () => {
                 <img
                   src={upgradeImageUrl(product.image, 'card')}
                   alt={product.name}
-                  className="w-full h-full object-cover object-top transition-transform duration-500" style={{imageRendering:"auto",willChange:"transform"}}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-full object-cover object-top transition-transform duration-500"
+                  style={{ willChange: 'transform' }}
                 />
                 <button
                   onClick={(e) => {
@@ -94,4 +99,4 @@ export const SavedView: React.FC = () => {
       )}
     </main>
   );
-};
+});

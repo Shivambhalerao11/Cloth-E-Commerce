@@ -44,12 +44,20 @@ export const ProductDetailView: React.FC = () => {
     }, 450);
   };
 
+  const animationFrameRef = useRef<number | null>(null);
+
   const handleSliderMove = (clientX: number) => {
     if (!sliderContainerRef.current) return;
-    const rect = sliderContainerRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
-    const percent = Math.max(0, Math.min((x / rect.width) * 100, 100));
-    setSliderPosition(percent);
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+    animationFrameRef.current = requestAnimationFrame(() => {
+      if (!sliderContainerRef.current) return;
+      const rect = sliderContainerRef.current.getBoundingClientRect();
+      const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
+      const percent = Math.max(0, Math.min((x / rect.width) * 100, 100));
+      setSliderPosition(percent);
+    });
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {

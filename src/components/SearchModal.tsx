@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useShop } from '../context/ShopContext';
 import { upgradeImageUrl } from '../components/OptimizedImage';
 
-export const SearchModal: React.FC = () => {
+const CATEGORIES = ['All', 'Shirts', 'Jackets', 'Denim', 'Knitwear', 'T-Shirts', 'Accessories'];
+
+export const SearchModal: React.FC = React.memo(() => {
   const { isSearchOpen, setIsSearchOpen, products, openProductDetail } = useShop();
   const [query, setQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -31,17 +33,20 @@ export const SearchModal: React.FC = () => {
     }
   }, [isSearchOpen]);
 
-  const filteredProducts = products.filter((item) => {
-    const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
-    const matchesQuery =
-      item.name.toLowerCase().includes(query.toLowerCase()) ||
-      item.subtitle.toLowerCase().includes(query.toLowerCase()) ||
-      item.category.toLowerCase().includes(query.toLowerCase()) ||
-      item.sku.toLowerCase().includes(query.toLowerCase());
-    return matchesCategory && matchesQuery;
-  });
-
-  const categories = ['All', 'Shirts', 'Jackets', 'Denim', 'Knitwear', 'T-Shirts', 'Accessories'];
+  const filteredProducts = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return products.filter((item) => {
+      const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
+      if (!matchesCategory) return false;
+      if (!q) return true;
+      return (
+        item.name.toLowerCase().includes(q) ||
+        item.subtitle.toLowerCase().includes(q) ||
+        item.category.toLowerCase().includes(q) ||
+        item.sku.toLowerCase().includes(q)
+      );
+    });
+  }, [products, query, selectedCategory]);
 
   return (
     <AnimatePresence>
@@ -54,6 +59,7 @@ export const SearchModal: React.FC = () => {
             exit={{ opacity: 0 }}
             onClick={() => setIsSearchOpen(false)}
             className="fixed inset-0 bg-[#1d1c14]/70 backdrop-blur-sm"
+            style={{ willChange: 'opacity' }}
           />
 
           {/* Modal Card */}
@@ -62,6 +68,7 @@ export const SearchModal: React.FC = () => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -10 }}
             transition={{ duration: 0.2 }}
+            style={{ willChange: 'transform, opacity' }}
             className="relative w-full max-w-2xl bg-[#fff9ed] border-2 border-[#1d1c14] shadow-[8px_8px_0px_0px_rgba(29,28,20,1)] overflow-hidden z-10 flex flex-col max-h-[80vh]"
           >
             {/* Search Input Bar */}
@@ -94,7 +101,7 @@ export const SearchModal: React.FC = () => {
 
             {/* Quick Category Chips */}
             <div className="flex gap-2 overflow-x-auto p-3 bg-[#f9f3e7] border-b border-[#cfc5bd] no-scrollbar">
-              {categories.map((cat) => (
+              {CATEGORIES.map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
@@ -134,6 +141,8 @@ export const SearchModal: React.FC = () => {
                           src={upgradeImageUrl(product.image, 'thumb')}
                           alt={product.name}
                           className="w-full h-full object-cover transition-transform"
+                          loading="lazy"
+                          decoding="async"
                         />
                       </div>
                       <div>
@@ -169,4 +178,4 @@ export const SearchModal: React.FC = () => {
       )}
     </AnimatePresence>
   );
-};
+});

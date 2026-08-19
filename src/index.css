@@ -28,25 +28,18 @@
     overflow-x: hidden;
   }
 
-  /* ── HD Image Rendering ─────────────────────────────────────────────────── */
+  /* ── HD Image Rendering & GPU Acceleration ────────────────────────────── */
   img {
-    /* Force crisp high-quality rendering on all browsers */
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: crisp-edges;
-    image-rendering: high-quality;
-    /* Prevent subpixel blur */
+    image-rendering: auto;
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
-    /* Hardware acceleration for smooth display */
-    transform: translateZ(0);
-    /* No blur on scaling */
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Remove scale transform that causes blur during hover animations */
-  img.transition-transform {
-    will-change: auto;
-    image-rendering: auto;
+  /* Hardware acceleration helper */
+  .gpu-accelerate {
+    transform: translateZ(0);
+    will-change: transform;
   }
   /* Sharp architectural Brutalist defaults */
   button, input, select, textarea {

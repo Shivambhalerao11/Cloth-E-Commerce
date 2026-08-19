@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { useShop } from '../context/ShopContext';
@@ -7,41 +7,56 @@ import { TabType } from '../types';
 // ── Scroll threshold at which compact mode activates ─────────────────────────
 const SCROLL_THRESHOLD = 60;
 
-export const TopAppBar: React.FC = () => {
+export const TopAppBar: React.FC = React.memo(() => {
   const { activeTab, setActiveTab, cartCount, setIsSearchOpen, setCursorText } = useShop();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // ── Shrink-on-scroll state ────────────────────────────────────────────────
   const [scrolled, setScrolled] = useState(false);
+  const scrolledRef = useRef(false);
 
   useEffect(() => {
+    let ticking = false;
     const handleScroll = () => {
-      setScrolled(window.scrollY > SCROLL_THRESHOLD);
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          const isScrolled = window.scrollY > SCROLL_THRESHOLD;
+          if (scrolledRef.current !== isScrolled) {
+            scrolledRef.current = isScrolled;
+            setScrolled(isScrolled);
+          }
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
-    // Set initial state in case page loads already scrolled
     handleScroll();
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Read session from localStorage
-  const sessionRaw = localStorage.getItem('amw_session');
-  const session: { name: string; email: string } | null = sessionRaw ? JSON.parse(sessionRaw) : null;
+  // Read session from localStorage with memoization
+  const session = useMemo(() => {
+    try {
+      const sessionRaw = localStorage.getItem('amw_session');
+      return sessionRaw ? JSON.parse(sessionRaw) as { name: string; email: string } : null;
+    } catch { return null; }
+  }, [activeTab]);
 
   const handleLogout = () => {
     localStorage.removeItem('amw_session');
     navigate('/');
   };
 
-  const navLinks: { id: TabType; label: string }[] = [
+  const navLinks: { id: TabType; label: string }[] = useMemo(() => [
     { id: 'home',   label: 'Home'             },
     { id: 'shop',   label: 'Shop'             },
     { id: 'saved',  label: 'Saved'            },
     { id: 'about',  label: 'Story & Location' },
     { id: 'orders', label: 'My Orders'        },
     { id: 'admin',  label: 'Management'       },
-  ];
+  ], []);
 
   return (
     <>
@@ -303,4 +318,5 @@ export const TopAppBar: React.FC = () => {
       </AnimatePresence>
     </>
   );
-};
+});
+
