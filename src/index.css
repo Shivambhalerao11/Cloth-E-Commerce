@@ -1,0 +1,156 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --color-surface: #fff9ed;
+    --color-surface-dim: #dfd9ce;
+    --color-surface-variant: #e8e2d6;
+    --color-surface-container: #f3ede1;
+    --color-surface-container-low: #f9f3e7;
+    --color-surface-container-high: #ede8dc;
+    --color-surface-container-highest: #e8e2d6;
+    --color-surface-container-lowest: #ffffff;
+    --color-on-surface: #1d1c14;
+    --color-on-surface-variant: #4c4640;
+    --color-primary: #100d0a;
+    --color-primary-container: #1e1b18;
+    --color-secondary: #a53c1b;
+    --color-secondary-container: #fe7e57;
+    --color-tertiary-fixed-dim: #f6be2c;
+    --color-outline: #7e766f;
+    --color-outline-variant: #cfc5bd;
+  }
+
+  body {
+    background-color: #fff9ed;
+    color: #1d1c14;
+    font-family: 'Archivo Narrow', sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* ── HD Image Rendering ─────────────────────────────────────────────────── */
+  img {
+    /* Force crisp high-quality rendering on all browsers */
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    image-rendering: high-quality;
+    /* Prevent subpixel blur */
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    /* Hardware acceleration for smooth display */
+    transform: translateZ(0);
+    /* No blur on scaling */
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Remove scale transform that causes blur during hover animations */
+  img.transition-transform {
+    will-change: auto;
+    image-rendering: auto;
+  }
+  /* Sharp architectural Brutalist defaults */
+  button, input, select, textarea {
+    font-family: inherit;
+  }
+}
+
+/* Custom Typography Utilities */
+.font-headline {
+  font-family: 'Newsreader', 'Fraunces', serif;
+}
+
+.font-editorial {
+  font-family: 'Fraunces', 'Newsreader', serif;
+}
+
+.font-body-custom {
+  font-family: 'Archivo Narrow', sans-serif;
+}
+
+.font-mono-custom {
+  font-family: 'Space Mono', monospace;
+}
+
+/* Marquee continuous scroll */
+@keyframes marquee-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: marquee-scroll 24s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* Hide scrollbar */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom Scrollbar for brutalist aesthetic */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #fff9ed;
+  border-left: 1px solid #1d1c14;
+}
+::-webkit-scrollbar-thumb {
+  background: #1d1c14;
+}
+
+/* Material Symbols fill variant */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+}
+.material-symbols-outlined.fill-1 {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Brutalist sharp border helpers */
+.brutalist-border {
+  border: 1px solid #1d1c14;
+}
+.brutalist-border-b {
+  border-bottom: 1px solid #1d1c14;
+}
+.brutalist-shadow {
+  box-shadow: 4px 4px 0px 0px rgba(29, 28, 20, 1);
+}
+.brutalist-shadow-sm {
+  box-shadow: 2px 2px 0px 0px rgba(29, 28, 20, 1);
+}
+
+/* Custom Cursor styling */
+.custom-cursor-dot {
+  pointer-events: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  border-radius: 9999px;
+  transform: translate(-50%, -50%);
+  transition: transform 0.08s ease-out, width 0.2s ease, height 0.2s ease, background-color 0.2s ease;
+}
+
+.custom-cursor-ring {
+  pointer-events: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9998;
+  border-radius: 9999px;
+  transform: translate(-50%, -50%);
+  transition: transform 0.15s ease-out, width 0.25s ease, height 0.25s ease, border-color 0.25s ease;
+}
