@@ -463,7 +463,7 @@ export const LoginView: React.FC = () => {
           </AnimatePresence>
 
           {/* Browse without login */}
-          <button type="button" onClick={() => navigate('/shop')}
+          <button type="button" onClick={() => navigate('/home')}
             className="mt-5 font-mono-custom text-[11px] text-center text-[#7e766f] hover:text-[#1d1c14] uppercase tracking-wide transition-colors cursor-pointer">
             ← Continue browsing without signing in
           </button>
