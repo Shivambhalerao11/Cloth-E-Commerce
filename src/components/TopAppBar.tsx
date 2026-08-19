@@ -1,13 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { useShop } from '../context/ShopContext';
 import { TabType } from '../types';
 
+// ── Scroll threshold at which compact mode activates ─────────────────────────
+const SCROLL_THRESHOLD = 60;
+
 export const TopAppBar: React.FC = () => {
   const { activeTab, setActiveTab, cartCount, setIsSearchOpen, setCursorText } = useShop();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // ── Shrink-on-scroll state ────────────────────────────────────────────────
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > SCROLL_THRESHOLD);
+    };
+    // Set initial state in case page loads already scrolled
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Read session from localStorage
   const sessionRaw = localStorage.getItem('amw_session');
@@ -29,9 +45,20 @@ export const TopAppBar: React.FC = () => {
 
   return (
     <>
-      {/* Desktop Header */}
-      <header className="hidden md:flex sticky top-0 justify-between items-center w-full px-8 lg:px-16 py-5 z-50 bg-[#fff9ed] border-b border-[#cfc5bd] transition-colors">
-        <nav className="flex gap-8 items-center">
+      {/* ── Desktop Header ──────────────────────────────────────────────────── */}
+      <header
+        className={`
+          hidden md:flex sticky top-0 justify-between items-center w-full z-50
+          bg-[#fff9ed] border-b border-[#cfc5bd]
+          transition-all duration-300 ease-in-out
+          ${scrolled
+            ? 'px-8 lg:px-16 py-2.5'   // compact: less vertical padding
+            : 'px-8 lg:px-16 py-5'     // full: original padding
+          }
+        `}
+      >
+        {/* Nav links — reduce gap when compact */}
+        <nav className={`flex items-center transition-all duration-300 ${scrolled ? 'gap-5' : 'gap-8'}`}>
           {navLinks.map((link) => {
             const isActive = activeTab === link.id;
             return (
@@ -57,23 +84,39 @@ export const TopAppBar: React.FC = () => {
           })}
         </nav>
 
-        {/* Center Headline */}
+        {/* Center Headline — shrink size and hide subtitle when compact */}
         <button
           onClick={() => setActiveTab('home')}
           onMouseEnter={() => setCursorText('AMW')}
           onMouseLeave={() => setCursorText('')}
           className="text-center group"
         >
-          <h1 className="font-headline text-2xl lg:text-3xl font-bold tracking-[0.08em] text-[#1d1c14] uppercase hover:opacity-85 transition-opacity">
+          <h1
+            className={`
+              font-headline font-bold tracking-[0.08em] text-[#1d1c14] uppercase
+              hover:opacity-85 transition-all duration-300
+              ${scrolled ? 'text-xl lg:text-2xl' : 'text-2xl lg:text-3xl'}
+            `}
+          >
             AMAR MEN'S WEAR
           </h1>
-          <span className="font-mono-custom text-[9px] tracking-widest text-[#7e766f] uppercase block -mt-1">
+          {/* Subtitle fades out smoothly when scrolled */}
+          <span
+            className={`
+              font-mono-custom text-[9px] tracking-widest text-[#7e766f] uppercase block -mt-1
+              transition-all duration-300 origin-top
+              ${scrolled
+                ? 'opacity-0 max-h-0 overflow-hidden -mt-0'
+                : 'opacity-100 max-h-4'
+              }
+            `}
+          >
             GANDHI CHOWK · VARANGAON
           </span>
         </button>
 
         {/* Right Actions */}
-        <div className="flex gap-6 items-center">
+        <div className={`flex items-center transition-all duration-300 ${scrolled ? 'gap-4' : 'gap-6'}`}>
           <button
             onClick={() => setIsSearchOpen(true)}
             onMouseEnter={() => setCursorText('SEARCH')}
@@ -134,14 +177,21 @@ export const TopAppBar: React.FC = () => {
         </div>
       </header>
 
-      {/* Mobile TopAppBar */}
-      <header className="md:hidden sticky top-0 flex justify-between items-center w-full px-4 py-3.5 z-50 bg-[#fff9ed] border-b border-[#cfc5bd]">
+      {/* ── Mobile Header ───────────────────────────────────────────────────── */}
+      <header
+        className={`
+          md:hidden sticky top-0 flex justify-between items-center w-full z-50
+          bg-[#fff9ed] border-b border-[#cfc5bd]
+          transition-all duration-300 ease-in-out
+          ${scrolled ? 'px-4 py-2' : 'px-4 py-3.5'}
+        `}
+      >
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           className="text-[#1d1c14] p-1.5 -ml-1.5 hover:opacity-80 active:scale-95 transition-transform"
           aria-label="Menu"
         >
-          <span className="material-symbols-outlined text-[26px]">
+          <span className={`material-symbols-outlined transition-all duration-300 ${scrolled ? 'text-[22px]' : 'text-[26px]'}`}>
             {isMobileMenuOpen ? 'close' : 'menu'}
           </span>
         </button>
@@ -150,7 +200,13 @@ export const TopAppBar: React.FC = () => {
           onClick={() => setActiveTab('home')}
           className="text-center"
         >
-          <h1 className="font-headline text-xl font-bold tracking-[0.08em] text-[#1d1c14] uppercase">
+          <h1
+            className={`
+              font-headline font-bold tracking-[0.08em] text-[#1d1c14] uppercase
+              transition-all duration-300
+              ${scrolled ? 'text-base' : 'text-xl'}
+            `}
+          >
             AMAR MEN'S WEAR
           </h1>
         </button>
@@ -160,7 +216,9 @@ export const TopAppBar: React.FC = () => {
           className="text-[#1d1c14] p-1.5 -mr-1.5 hover:opacity-80 active:scale-95 transition-transform relative"
           aria-label="Shopping Bag"
         >
-          <span className="material-symbols-outlined text-[24px]">shopping_bag</span>
+          <span className={`material-symbols-outlined transition-all duration-300 ${scrolled ? 'text-[21px]' : 'text-[24px]'}`}>
+            shopping_bag
+          </span>
           {cartCount > 0 && (
             <span className="absolute top-1 right-1 w-4 h-4 bg-[#a53c1b] text-white font-mono-custom text-[9px] flex items-center justify-center rounded-full">
               {cartCount}
@@ -169,7 +227,7 @@ export const TopAppBar: React.FC = () => {
         </button>
       </header>
 
-      {/* Mobile Drawer Menu */}
+      {/* ── Mobile Drawer Menu ──────────────────────────────────────────────── */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
